@@ -64,13 +64,13 @@ invalid _   = true
 
 -- environment entry
 
-entry : Set
-entry = R × Nat
+tagged-value : Set
+tagged-value = R × Nat
 
 -- environment
 
 Env : Set
-Env = Vec entry REG-SIZE
+Env = Vec tagged-value REG-SIZE
 
 non-zero-entry : Env → reg → reg → Bool
 non-zero-entry env r1 r2 = is-zero (snd (lookup r1 env)) ∧
@@ -94,9 +94,9 @@ infix 0 _[_]p=_
 
 -- arithmetic expressions, by construction no invalid register is read.
 
-data E (env : Env) : R → Set where
-   K   : Nat → E env num
-   #_  : ∀ {r t} → (env [ r ]p= t) → E env t
+data E (env : Env) : tagged-value → Set where
+   K   : (n : Nat) → E env (num , n) 
+   #_  : ∀ {r t} → (env [ r ] ~ t) → E env t
    _⊕₁_ : ∀ {r1 r2 t} → env [ r1 ]p= num →
                         env [ r2 ]p= t →
                         E env num
@@ -162,6 +162,14 @@ data cmd (env : Env) : Env → Set where
                    env [ p ]p= t →
                    t ≢ num →
                    cmd env env
+  store : ∀ {p x t1 t2}(sz : Nat) →
+            in-bounds env sz p →
+            env [ p ]p= t1 →
+            env [ x ]p= t2 →
+            t1 ≢ num →
+            t2 ≢ num →
+            t1 ≡ stk → 
+            cmd env env 
 
 
 -- state definition
@@ -185,4 +193,7 @@ Address = Fin MEM-SIZE
 
 data prog : σ → σ → Set where
   []  : ∀ {s} → prog s s
- -- _∷_ : ∀ 
+  _∷_ : ∀ {s s' s''} →
+        cmd (fst s) (fst s') →
+        prog s' s'' →
+        prog s s''
